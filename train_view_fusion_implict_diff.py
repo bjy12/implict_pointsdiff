@@ -129,13 +129,17 @@ def train(config_file_path, cfg):
     eval_start_epoch = cfg['setting']['eval_start_epoch']
     iters_per_logging = cfg['setting']['iters_per_logging']
     eval_per_ckpt = cfg['setting']['eval_per_ckpt']
+
     loader_len = len(train_dl)
+
     n_iters = int(loader_len * num_epochs) # number of total training steps 
     iters_per_ckpt = int(loader_len * epochs_per_ckpt) # save a ckpt every iters_per_ckpt steps
     n_iter = ckpt_iter + 1
     eval_start_iter = eval_start_epoch  *  loader_len - 1 
     # 
     num_ckpts = 0 # evey time restart training 
+    pdb.set_trace()
+
     log_start_time = time.time() # used to compute how much time is consumed between 2 printing log
     # n_iter from 0 to n_iters if we train the model from sratch
     while n_iter < n_iters+1:
@@ -153,10 +157,7 @@ def train(config_file_path, cfg):
             # ema model update
             if ema_rate is not None:
                 for ema_helper in ema_helper_list:
-                    ema_helper.update(model)
-            #grad_norm = nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
-            #print(f"Gradient norm: {grad_norm}")
-            #print loss 
+                    ema_helper.update(model) 
 
             # logging each iters 
             if n_iter % iters_per_logging == 0:
@@ -179,14 +180,18 @@ def train(config_file_path, cfg):
                 print('model at iteration %s at n_iter %d is saved' % (n_iter, epoch_number), flush=True)
             # evaluate the model at the checkpoint
             if n_iter >= eval_start_iter and num_ckpts % eval_per_ckpt==0:
+                model.eval()
                 save_dir = os.path.join(exp_dir,subdir[2], 'eval_result')
                 ckpt_info = '_epoch_%s_iter_%d' % (str(epoch_number).zfill(4), n_iter)
                 print('\nBegin evaluting the saved checkpoint')
                 evaluate_ssim_psnr(model ,idensity_diffusion , cfg ,val_dl,
                                     save_dir , tensorboard_logger , task='vis_blocks',
                                     ckpt_info=ckpt_info)
+                model.train()
+            n_iter += 1  
 
         latest_checkpoint_name = 'model_ckpt_latest.pkl'
+
         latest_checkpoint_states = {
             'iter': n_iter,
             'model_state_dict': model.state_dict(),
@@ -194,13 +199,13 @@ def train(config_file_path, cfg):
             'training_time_seconds': int(time.time()-time0),
             'epoch': epoch_number
         }
+
         if not ema_rate is None:
             latest_checkpoint_states['ema_state_list'] = [ema_helper.state_dict() for ema_helper in ema_helper_list]
         # 保存到 checkpoints 目录，覆盖之前的文件
         latest_save_path = os.path.join(exp_dir, subdir[0], latest_checkpoint_name)
         torch.save(latest_checkpoint_states, latest_save_path)
-        print(f'Latest model saved at epoch {epoch_number}, iteration {n_iter}', flush=True)
-        n_iter += 1        
+        print(f'Latest model saved at epoch {epoch_number}, iteration {n_iter}', flush=True)      
 
             
         
