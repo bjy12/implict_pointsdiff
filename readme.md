@@ -1,0 +1,1 @@
+this project use points-wise generate ct image from bi-xray image 
