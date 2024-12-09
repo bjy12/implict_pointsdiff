@@ -1,0 +1,144 @@
+standard_diffusion_config:
+  beta_schedule: "linear"
+  num_diffusion_timesteps: 10
+  beta_start: 0.0001
+  beta_end: 0.02
+  data_clamp_range: -1
+  model_var_type: "fixedsmall"
+  model_output_scale_factor: 1.0
+  loss_type: null
+  keypoint_position_loss_weight: 0.0
+  feature_loss_weight: 1.0
+  keypoint_conditional: true
+model:
+  name: 'implict_diff_points'
+  image_encoder:
+    n_channels: 1
+    n_classes: 128
+    bilinear: False
+  aggregation_config:
+    in_view_channels: 10
+    in_points_channels: 128 
+    view_embedd_channels: 128
+    points_embedd_channels: 128
+    nc_inner: 32
+    num_groups: 2
+    scaling: False
+    eps: 1e-6
+    gating: True
+    g_type: 'max'
+    deep_set_feat:
+      pool: 'max'
+      fusion: 'concatenation'
+      use_num: False
+  pv_encoder:
+    in_channels: [128 , 256, 512]
+    out_channels: [256, 512, 1024]
+    patch_res: 16
+    scale_factor: [2,4,8]
+    k: 16
+    hidden_dim: [512, 1024, 2048]
+    decimation: 4
+  triplane_encoder:
+    res_plane: [32,16,8]
+    plane_feat_dim: [256,512,1024]
+    padding: 0.1
+    plane_type: ['xz', 'xy', 'yz']                  
+  triplane_decoder:
+    plane_feat_dim: 256
+    hidden_size: 32
+    n_blocks: 3
+  ct_res: 128.0
+  denoise_type: 'pred_idensity'
+denoise_net:  # 新增的denoise网络配置         
+  in_fea_dim: 1
+  partial_in_fea_dim: 32
+  out_dim: 4
+  include_t: true
+  t_dim: 128
+  model.use_xyz: true
+  attach_position_to_input_feature: true
+  include_abs_coordinate: true
+  include_center_coordinate: true
+  record_neighbor_stats: false
+  bn_first: false
+  bias: true
+  res_connect: true
+  include_class_condition: false
+  num_class: 13
+  class_condition_dim: 128
+  bn: true
+  include_local_feature: true
+  include_global_feature: false
+  global_feature_remove_last_activation: false
+  pnet_global_feature_architecture: [[4, 128, 256], [512, 1024]]
+  architecture: 
+    npoint: [4096,1024,256,64]
+    radius: [0, 0, 0 , 0]
+    neighbor_definition: "nn"
+    nsample: [16, 16 , 16, 16]
+    feature_dim: [1, 32 , 32 , 64 ,128]
+    mlp_depth: 3
+    decoder_feature_dim: [1, 32 ,32 ,64, 128]
+    include_grouper: false
+    decoder_mlp_depth: 2
+    use_knn_FP": true
+    K: 8
+  attention_setting: 
+    use_attention_module: true,
+    attention_bn: true,
+    transform_grouped_feat_out: true,
+    last_activation: true,
+    add_attention_to_FeatureMapper_module: true
+  condition_net_architecture:
+    npoint: [4096,1024,256,64]
+    radius: [0, 0 ,0, 0]
+    neighbor_definition: "nn"
+    nsample: [16, 16, 16, 16]
+    feature_dim: [32, 32, 64 , 64,128 ]
+    mlp_depth: 3
+    decoder_feature_dim: [32,32,64,64,128]
+    include_grouper: false
+    decoder_mlp_depth: 2
+    use_knn_FP: true
+    K: 8
+  feature_mapper_architecture:
+    encoder_feature_map_dim: [32,32,64,64] 
+    encoder_mlp_depth: 2
+    encoder_radius: [0, 0,0,0]
+    encoder_nsample: [16,16,16,16,16]
+    neighbor_definition: "nn"
+    decoder_feature_map_dim: [32, 32,64,64,128]
+    decoder_mlp_depth: 2
+    decoder_radius: [0, 0 ,0,0,0]
+    decoder_nsample: [16,16,16,16,16]
+data:
+  name: 'PointsViewFeature'
+  batch_size: 1
+  base_dir: 'F:/Data_Space/Pelvic1K/all_blocks_proj_256'
+  train_list: "./data_file_list/pelvic_coord_train_16.txt"
+  val_list: "./data_file_list/pelvic_coord_test_16.txt"
+  geo_config_path: "./config/geo_config/config_block_64.yaml"
+  num_workers: 2
+  pin_memory: True
+  num_view: 2
+  crop_type: True
+  ct_res: 256
+  crop_size: 16
+gpu: '0'
+setting:
+  epoch: 2500
+  epochs_per_ckpt: 50
+  ckpt_iter: 0
+  eval_start_epoch: 30
+  iters_per_logging: 1
+  eval_per_ckpt: 50
+  results_dir: "demo_implict_diff"
+  num_points: 4096
+  lr: 1e-4
+  lr_decay_epoch: 200
+  ema_rate: [0.999,0.9999]
+  tf_log: './tf_log/autoencoder_log'
+  exp_name: 'autoencode_points_implict_DGCNN'
+  ckpt_save_path: './ckpt/autoencoder'
+  save_ckpt_freq: 200

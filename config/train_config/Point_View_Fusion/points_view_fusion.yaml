@@ -1,0 +1,105 @@
+model:
+  image_encoder:
+    n_channels: 1
+    n_classes: 128
+    bilinear: False
+  aggregation_config:
+    in_view_channels: 10
+    in_points_channels: 128 
+    view_embedd_channels: 128
+    points_embedd_channels: 128
+    nc_inner: 32
+    num_groups: 2
+    scaling: False
+    eps: 1e-6
+    gating: True
+    g_type: 'max'
+    deep_set_feat:
+      pool: 'max'
+      fusion: 'concatenation'
+      use_num: False
+  pv_encoder:
+    in_channels: [128 , 256, 512]
+    out_channels: [256, 512, 1024]
+    patch_res: 16
+    scale_factor: [2,4,8]
+    k: 16
+    hidden_dim: [512, 1024, 2048]
+    decimation: 4
+  triplane_encoder:
+    res_plane: [32,16,8]
+    plane_feat_dim: [256,512,1024]
+    padding: 0.1
+    plane_type: ['xz', 'xy', 'yz']                  
+  triplane_decoder:
+    plane_feat_dim: 256
+    hidden_size: 128
+    n_blocks: 3
+  denoise_net:  # 新增的denoise网络配置                                
+    num_layers: 1
+    in_channels: 257
+    out_channels: 1
+    embed_dim: 256
+    model_type: "pvcnn_att"
+    dropout: 0.1
+    width_multiplier: 1
+    voxel_resolution_multiplier: 1
+    num_heads: 8
+    mlp_ratio: 4.0
+    qkv_bias: false
+    drop: 0.0
+    attn_drop: 0.0
+    init_values: 1.0e-5
+    drop_path: 0.0
+    use_attn: true
+    sa_blocks:
+      - - [256, 2, 8]
+        - [1024, 0.1, 32, [256, 256]]
+      - - [256, 2, 4]
+        - [256, 0.2, 32, [256, 512]]
+      - - null
+        - [64, 0.4, 32, [512, 512, 1024]]
+    fp_blocks:
+      - - [512, 512]
+        - [512, 2, 4]
+      - - [512, 256]
+        - [256, 2, 8]
+      - - [256, 256, 256]
+        - [256, 2, 8]
+  diffusion_config:
+      beta_schedule: "linear"
+      num_diffusion_timesteps: 1000
+      beta_start: 0.0001
+      beta_end: 0.02
+      data_clamp_range: -1
+      model_var_type: "fixedsmall"
+      model_output_scale_factor: 1.0
+      loss_type: null
+      keypoint_position_loss_weight: 0.0
+      feature_loss_weight: 1.0
+      keypoint_conditional: true
+  ct_res: 128.0
+  denoise_type: 'pred_idensity'
+data:
+  name: 'PointsViewFeature'
+  batch_size: 1
+  base_dir: 'F:/Data_Space/Pelvic1K/blocks_all_proj256'
+  train_list: "./data_file_list/pelvic_coord_train_16.txt"
+  val_list: "./data_file_list/pelvic_coord_test_16.txt"
+  geo_config_path: "./config/geo_config/config_block_64.yaml"
+  n_points: 10000
+  num_workers: 2
+  pin_memory: True
+  num_view: 2
+  crop_type: True
+  ct_res: 128
+  crop_size: 16
+gpu: '0'
+setting:
+  epoch: 2500
+  lr: 1e-4
+  lr_decay_epoch: 200
+  tf_log: './tf_log/autoencoder_log'
+  exp_name: 'autoencode_points_implict_DGCNN'
+  ckpt_save_path: './ckpt/autoencoder'
+  save_ckpt_freq: 200
