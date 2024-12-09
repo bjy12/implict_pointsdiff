@@ -122,26 +122,29 @@ def train(config_file_path, cfg):
     optimizer = torch.optim.Adam(model.parameters() , lr = cfg['setting']['lr'])
     #pdb.set_trace()
     #* traning setting 
+    loader_len = len(train_dl)
     time0 = time.time()
     num_epochs = cfg['setting']['epoch']
+    # save a ckpt per number of epochs 
     epochs_per_ckpt = cfg['setting']['epochs_per_ckpt']
+    iters_per_ckpt = int(loader_len * epochs_per_ckpt) # save a ckpt every iters_per_ckpt steps
+    #start iter 
     ckpt_iter = cfg['setting']['ckpt_iter'] # for  continue training  if  not resume training  
+    n_iter = ckpt_iter + 1
+    # start eval dataset number of epoch 
     eval_start_epoch = cfg['setting']['eval_start_epoch']
+    eval_start_iter = eval_start_epoch  *  loader_len - 1 
+    # per iters logging 
     iters_per_logging = cfg['setting']['iters_per_logging']
     eval_per_ckpt = cfg['setting']['eval_per_ckpt']
 
-    loader_len = len(train_dl)
-
     n_iters = int(loader_len * num_epochs) # number of total training steps 
-    iters_per_ckpt = int(loader_len * epochs_per_ckpt) # save a ckpt every iters_per_ckpt steps
-    n_iter = ckpt_iter + 1
-    eval_start_iter = eval_start_epoch  *  loader_len - 1 
     # 
     num_ckpts = 0 # evey time restart training 
     pdb.set_trace()
 
     log_start_time = time.time() # used to compute how much time is consumed between 2 printing log
-    # n_iter from 0 to n_iters if we train the model from sratch
+    # n_iter from 0 to n_iters if we train the model from restart
     while n_iter < n_iters+1:
         #model.train()
         #pdb.set_trace()
@@ -178,16 +181,16 @@ def train(config_file_path, cfg):
                     checkpoint_states['ema_state_list'] = [ema_helper.state_dict() for ema_helper in ema_helper_list]
                 torch.save(checkpoint_states, os.path.join(exp_dir,subdir[1], checkpoint_name))
                 print('model at iteration %s at n_iter %d is saved' % (n_iter, epoch_number), flush=True)
-            # evaluate the model at the checkpoint
-            if n_iter >= eval_start_iter and num_ckpts % eval_per_ckpt==0:
-                model.eval()
-                save_dir = os.path.join(exp_dir,subdir[2], 'eval_result')
-                ckpt_info = '_epoch_%s_iter_%d' % (str(epoch_number).zfill(4), n_iter)
-                print('\nBegin evaluting the saved checkpoint')
-                evaluate_ssim_psnr(model ,idensity_diffusion , cfg ,val_dl,
-                                    save_dir , tensorboard_logger , task='vis_blocks',
-                                    ckpt_info=ckpt_info)
-                model.train()
+                # evaluate the model at the checkpoint
+                if n_iter >= eval_start_iter and num_ckpts % eval_per_ckpt==0:
+                    model.eval()
+                    save_dir = os.path.join(exp_dir,subdir[2], 'eval_result')
+                    ckpt_info = '_epoch_%s_iter_%d' % (str(epoch_number).zfill(4), n_iter)
+                    print('\nBegin evaluting the saved checkpoint')
+                    evaluate_ssim_psnr(model ,idensity_diffusion , cfg ,val_dl,
+                                        save_dir , tensorboard_logger , task='vis_blocks',
+                                        ckpt_info=ckpt_info)
+                    model.train()
             n_iter += 1  
 
         latest_checkpoint_name = 'model_ckpt_latest.pkl'
